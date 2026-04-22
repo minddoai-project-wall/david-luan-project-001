@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fruit Catcher</title>
+  <style>
+    :root {
+      --sky-top: #dff4ff;
+      --sky-bottom: #fff9e6;
+      --panel: rgba(255, 255, 255, 0.88);
+      --text: #213547;
+      --muted: #5e7485;
+      --accent: #ff7a2f;
+      --accent-dark: #de5f19;
+      --grass: #7ecf65;
+      --shadow: 0 20px 50px rgba(33, 53, 71, 0.16);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Nunito", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(84, 196, 140, 0.26), transparent 25%),
+        radial-gradient(circle at top right, rgba(255, 186, 84, 0.26), transparent 20%),
+        linear-gradient(180deg, var(--sky-top), var(--sky-bottom));
+      padding: 20px;
+      display: grid;
+      place-items: center;
+    }
+
+    .game-shell {
+      width: min(100%, 920px);
+      display: grid;
+      gap: 18px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 22px;
+      border: 1px solid rgba(33, 53, 71, 0.08);
+    }
+
+    .hero {
+      display: grid;
+      gap: 14px;
+    }
+
+    h1,
+    h2,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: clamp(2.2rem, 5vw, 3.4rem);
+      line-height: 0.98;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      line-height: 1.5;
+      max-width: 58ch;
+    }
+
+    .hud {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .stat {
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(33, 53, 71, 0.08);
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .stat-value {
+      display: block;
+      margin-top: 6px;
+      font-size: 1.5rem;
+      font-weight: 800;
+    }
+
+    .stage-wrap {
+      position: relative;
+      overflow: hidden;
+      border-radius: 28px;
+      background:
+        linear-gradient(180deg, rgba(198, 240, 255, 0.95) 0%, rgba(255, 245, 212, 0.95) 84%, rgba(126, 207, 101, 1) 84%, rgba(126, 207, 101, 1) 100%);
+      border: 1px solid rgba(33, 53, 71, 0.08);
+      box-shadow: var(--shadow);
+    }
+
+    canvas {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(18, 35, 52, 0.28);
+      transition: opacity 180ms ease;
+    }
+
+    .overlay[hidden] {
+      display: none;
+    }
+
+    .dialog {
+      width: min(100%, 440px);
+      padding: 24px;
+      border-radius: 24px;
+      background: rgba(255, 255, 255, 0.95);
+      text-align: center;
+      display: grid;
+      gap: 14px;
+      box-shadow: 0 18px 50px rgba(18, 35, 52, 0.18);
+    }
+
+    .dialog p {
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 140ms ease, background 140ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    .primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .primary:hover {
+      background: var(--accent-dark);
+    }
+
+    .secondary {
+      background: rgba(33, 53, 71, 0.08);
+      color: var(--text);
+    }
+
+    .tips {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .tip {
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(33, 53, 71, 0.08);
+    }
+
+    .tip h2 {
+      font-size: 1rem;
+      margin-bottom: 8px;
+    }
+
+    .tip p {
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    @media (max-width: 720px) {
+      .hud,
+      .tips {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      body {
+        padding: 14px;
+      }
+
+      .panel {
+        padding: 18px;
+      }
+
+      .hud,
+      .tips {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="game-shell">
+    <section class="panel hero">
+      <h1>Fruit Catcher</h1>
+      <p class="subtitle">Move the basket with the left and right arrow keys to catch fruit falling from the trees. Catch 15 fruits to win. Miss 8 fruits and the orchard beats you.</p>
+      <div class="hud" aria-label="Game status">
+        <div class="stat">
+          <span class="stat-label">Score</span>
+          <span class="stat-value" id="scoreValue">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Misses</span>
+          <span class="stat-value" id="missValue">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Goal</span>
+          <span class="stat-value">15</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Controls</span>
+          <span class="stat-value">← →</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Power-Up</span>
+          <span class="stat-value" id="effectValue">None</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="stage-wrap">
+      <canvas id="gameCanvas" width="880" height="560" aria-label="Fruit catching game"></canvas>
+      <div class="overlay" id="overlay">
+        <div class="dialog">
+          <h2 id="dialogTitle">Catch the falling fruit</h2>
+          <p id="dialogMessage">Use the arrow keys to move the basket. Catch 15 fruits to win. Press start when you're ready.</p>
+          <div class="actions">
+            <button class="primary" id="startButton" type="button">Start Game</button>
+            <button class="secondary" id="restartButton" type="button">Restart</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tips">
+      <div class="tip">
+        <h2>How to play</h2>
+        <p>Move the basket under the falling fruit. Every fruit you catch adds one point.</p>
+      </div>
+      <div class="tip">
+        <h2>How to win</h2>
+        <p>Reach 15 catches before you miss 8 fruits. Watch out for insects, because they reduce your score.</p>
+      </div>
+      <div class="tip">
+        <h2>Power-ups</h2>
+        <p>Catch stars for a temporary bonus: bigger basket, faster movement, or a bug clear that removes insects.</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const scoreValue = document.getElementById("scoreValue");
+    const missValue = document.getElementById("missValue");
+    const effectValue = document.getElementById("effectValue");
+    const overlay = document.getElementById("overlay");
+    const dialogTitle = document.getElementById("dialogTitle");
+    const dialogMessage = document.getElementById("dialogMessage");
+    const startButton = document.getElementById("startButton");
+    const restartButton = document.getElementById("restartButton");
+
+    const game = {
+      running: false,
+      score: 0,
+      misses: 0,
+      winScore: 15,
+      maxMisses: 8,
+      lastTime: 0,
+      spawnTimer: 0,
+      spawnEvery: 850,
+      effectTimer: 0,
+      activeEffect: "None",
+      basket: {
+        baseWidth: 126,
+        width: 126,
+        height: 34,
+        x: canvas.width / 2 - 63,
+        y: canvas.height - 70,
+        baseSpeed: 430,
+        speed: 430
+      },
+      keys: {
+        left: false,
+        right: false
+      },
+      items: []
+    };
+
+    function resetGame() {
+      game.running = false;
+      game.score = 0;
+      game.misses = 0;
+      game.lastTime = 0;
+      game.spawnTimer = 0;
+      game.spawnEvery = 850;
+      game.effectTimer = 0;
+      game.activeEffect = "None";
+      game.basket.width = game.basket.baseWidth;
+      game.basket.speed = game.basket.baseSpeed;
+      game.basket.x = canvas.width / 2 - game.basket.width / 2;
+      game.items = [];
+      updateHud();
+      showOverlay(
+        "Catch the falling fruit",
+        "Use the arrow keys to move the basket. Catch 15 fruits to win, avoid insects, and grab power-ups when they appear."
+      );
+      draw();
+    }
+
+    function startGame() {
+      game.running = true;
+      overlay.hidden = true;
+      game.lastTime = performance.now();
+      window.requestAnimationFrame(loop);
+    }
+
+    function showOverlay(title, message) {
+      dialogTitle.textContent = title;
+      dialogMessage.textContent = message;
+      overlay.hidden = false;
+    }
+
+    function endGame(title, message) {
+      game.running = false;
+      showOverlay(title, message);
+    }
+
+    function updateHud() {
+      scoreValue.textContent = String(game.score);
+      missValue.textContent = String(game.misses);
+      effectValue.textContent = game.activeEffect;
+    }
+
+    function createFruit() {
+      const kinds = [
+        { color: "#ff5b4d", leaf: "#43a047" },
+        { color: "#ffb703", leaf: "#2a9d8f" },
+        { color: "#fb8500", leaf: "#4caf50" }
+      ];
+      const kind = kinds[Math.floor(Math.random() * kinds.length)];
+      const radius = 16 + Math.random() * 8;
+      return {
+        type: "fruit",
+        x: 80 + Math.random() * (canvas.width - 160),
+        y: -30,
+        radius,
+        speed: 150 + Math.random() * 60 + game.score * 6,
+        color: kind.color,
+        leaf: kind.leaf,
+        sway: Math.random() * Math.PI * 2
+      };
+    }
+
+    function createInsect() {
+      return {
+        type: "insect",
+        x: 80 + Math.random() * (canvas.width - 160),
+        y: -24,
+        radius: 14,
+        speed: 185 + Math.random() * 70 + game.score * 5,
+        color: "#2f3640",
+        wing: "#c7f9ff",
+        sway: Math.random() * Math.PI * 2
+      };
+    }
+
+    function createPowerUp() {
+      const effects = [
+        { effect: "Big Basket", color: "#7c4dff", icon: "+" },
+        { effect: "Fast Basket", color: "#00b894", icon: ">>" },
+        { effect: "Bug Clear", color: "#ff4d6d", icon: "X" }
+      ];
+      const choice = effects[Math.floor(Math.random() * effects.length)];
+      return {
+        type: "powerup",
+        x: 90 + Math.random() * (canvas.width - 180),
+        y: -26,
+        radius: 18,
+        speed: 170 + Math.random() * 40,
+        color: choice.color,
+        effect: choice.effect,
+        icon: choice.icon,
+        sway: Math.random() * Math.PI * 2
+      };
+    }
+
+    function createItem() {
+      const roll = Math.random();
+      if (roll < 0.14) {
+        return createInsect();
+      }
+      if (roll < 0.22) {
+        return createPowerUp();
+      }
+      return createFruit();
+    }
+
+    function applyPowerUp(effect) {
+      if (effect === "Big Basket") {
+        game.basket.width = 180;
+        game.basket.speed = game.basket.baseSpeed;
+        game.effectTimer = 7000;
+        game.activeEffect = "Big Basket";
+      } else if (effect === "Fast Basket") {
+        game.basket.width = game.basket.baseWidth;
+        game.basket.speed = 620;
+        game.effectTimer = 7000;
+        game.activeEffect = "Fast Basket";
+      } else if (effect === "Bug Clear") {
+        game.items = game.items.filter((item) => item.type !== "insect");
+        game.basket.width = game.basket.baseWidth;
+        game.basket.speed = game.basket.baseSpeed;
+        game.effectTimer = 3500;
+        game.activeEffect = "Bug Clear";
+      }
+      updateHud();
+    }
+
+    function clearExpiredEffect(deltaMs) {
+      if (game.effectTimer <= 0) {
+        return;
+      }
+
+      game.effectTimer -= deltaMs;
+      if (game.effectTimer <= 0) {
+        game.effectTimer = 0;
+        game.activeEffect = "None";
+        game.basket.width = game.basket.baseWidth;
+        game.basket.speed = game.basket.baseSpeed;
+        updateHud();
+      }
+    }
+
+    function update(deltaMs) {
+      const delta = deltaMs / 1000;
+      clearExpiredEffect(deltaMs);
+
+      if (game.keys.left) {
+        game.basket.x -= game.basket.speed * delta;
+      }
+      if (game.keys.right) {
+        game.basket.x += game.basket.speed * delta;
+      }
+
+      game.basket.x = Math.max(14, Math.min(canvas.width - game.basket.width - 14, game.basket.x));
+
+      game.spawnTimer += deltaMs;
+      if (game.spawnTimer >= game.spawnEvery) {
+        game.spawnTimer = 0;
+        game.items.push(createItem());
+      }
+
+      const basketTop = game.basket.y;
+      const basketLeft = game.basket.x;
+      const basketRight = game.basket.x + game.basket.width;
+
+      game.items = game.items.filter((item) => {
+        item.y += item.speed * delta;
+        item.x += Math.sin((item.y + item.sway) * 0.02) * 0.4;
+
+        const caught =
+          item.y + item.radius >= basketTop &&
+          item.y + item.radius <= basketTop + game.basket.height + 10 &&
+          item.x >= basketLeft - 6 &&
+          item.x <= basketRight + 6;
+
+        if (caught) {
+          if (item.type === "fruit") {
+            game.score += 1;
+            game.spawnEvery = Math.max(420, game.spawnEvery - 16);
+          } else if (item.type === "insect") {
+            game.score = Math.max(0, game.score - 2);
+          } else if (item.type === "powerup") {
+            applyPowerUp(item.effect);
+          }
+
+          updateHud();
+          if (game.score >= game.winScore) {
+            endGame("You win!", "Great catch. You filled the basket with 15 fruits. Press restart to play again.");
+          }
+          return false;
+        }
+
+        if (item.y - item.radius > canvas.height - 20) {
+          if (item.type === "fruit") {
+            game.misses += 1;
+            updateHud();
+            if (game.misses >= game.maxMisses) {
+              endGame("Game over", "Too many fruits hit the ground. Press restart and try to catch more next round.");
+            }
+          }
+          return false;
+        }
+
+        return true;
+      });
+    }
+
+    function drawSkyAndTrees() {
+      ctx.fillStyle = "#8fd36e";
+      ctx.fillRect(0, canvas.height - 90, canvas.width, 90);
+
+      const treeXs = [120, 280, 440, 610, 770];
+      treeXs.forEach((x, index) => {
+        ctx.fillStyle = "#7f5539";
+        ctx.fillRect(x - 10, 80, 20, 120);
+
+        ctx.beginPath();
+        ctx.fillStyle = index % 2 === 0 ? "#56ab5e" : "#62b66a";
+        ctx.arc(x, 74, 58, 0, Math.PI * 2);
+        ctx.arc(x - 34, 102, 44, 0, Math.PI * 2);
+        ctx.arc(x + 34, 102, 44, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+      ctx.beginPath();
+      ctx.arc(120, 72, 30, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(780, 92, 22, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawBasket() {
+      const { x, y, width, height } = game.basket;
+
+      ctx.fillStyle = "#b86f3c";
+      ctx.beginPath();
+      ctx.roundRect(x, y + 10, width, height, 12);
+      ctx.fill();
+
+      ctx.strokeStyle = "#8a4f24";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(x + width / 2, y + 18, width / 2.9, Math.PI, 2 * Math.PI);
+      ctx.stroke();
+
+      ctx.strokeStyle = "#8a4f24";
+      ctx.lineWidth = 2;
+      for (let i = 1; i < 5; i += 1) {
+        const stripeX = x + i * (width / 5);
+        ctx.beginPath();
+        ctx.moveTo(stripeX, y + 12);
+        ctx.lineTo(stripeX, y + height + 6);
+        ctx.stroke();
+      }
+    }
+
+    function drawFruit(fruit) {
+      ctx.fillStyle = fruit.color;
+      ctx.beginPath();
+      ctx.arc(fruit.x, fruit.y, fruit.radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "#73441f";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(fruit.x, fruit.y - fruit.radius + 4);
+      ctx.lineTo(fruit.x + 2, fruit.y - fruit.radius - 10);
+      ctx.stroke();
+
+      ctx.fillStyle = fruit.leaf;
+      ctx.beginPath();
+      ctx.ellipse(fruit.x + 8, fruit.y - fruit.radius - 6, 7, 4, -0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawInsect(insect) {
+      ctx.fillStyle = insect.wing;
+      ctx.beginPath();
+      ctx.ellipse(insect.x - 10, insect.y, 10, 6, -0.4, 0, Math.PI * 2);
+      ctx.ellipse(insect.x + 10, insect.y, 10, 6, 0.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = insect.color;
+      ctx.beginPath();
+      ctx.ellipse(insect.x, insect.y, 11, 15, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = insect.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(insect.x - 6, insect.y + 6);
+      ctx.lineTo(insect.x - 14, insect.y + 12);
+      ctx.moveTo(insect.x + 6, insect.y + 6);
+      ctx.lineTo(insect.x + 14, insect.y + 12);
+      ctx.moveTo(insect.x - 4, insect.y - 10);
+      ctx.lineTo(insect.x - 10, insect.y - 18);
+      ctx.moveTo(insect.x + 4, insect.y - 10);
+      ctx.lineTo(insect.x + 10, insect.y - 18);
+      ctx.stroke();
+    }
+
+    function drawPowerUp(powerUp) {
+      ctx.fillStyle = powerUp.color;
+      ctx.beginPath();
+      ctx.arc(powerUp.x, powerUp.y, powerUp.radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+      ctx.font = "bold 16px Avenir Next, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(powerUp.icon, powerUp.x, powerUp.y + 1);
+    }
+
+    function drawGroundLine() {
+      ctx.strokeStyle = "rgba(71, 111, 52, 0.45)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0, canvas.height - 92);
+      ctx.lineTo(canvas.width, canvas.height - 92);
+      ctx.stroke();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawSkyAndTrees();
+      drawGroundLine();
+      game.items.forEach((item) => {
+        if (item.type === "fruit") {
+          drawFruit(item);
+        } else if (item.type === "insect") {
+          drawInsect(item);
+        } else {
+          drawPowerUp(item);
+        }
+      });
+      drawBasket();
+    }
+
+    function loop(timestamp) {
+      if (!game.running) {
+        draw();
+        return;
+      }
+
+      const deltaMs = Math.min(32, timestamp - game.lastTime || 16);
+      game.lastTime = timestamp;
+      update(deltaMs);
+      draw();
+
+      if (game.running) {
+        window.requestAnimationFrame(loop);
+      }
+    }
+
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowLeft") {
+        game.keys.left = true;
+        event.preventDefault();
+      }
+      if (event.key === "ArrowRight") {
+        game.keys.right = true;
+        event.preventDefault();
+      }
+    });
+
+    window.addEventListener("keyup", (event) => {
+      if (event.key === "ArrowLeft") {
+        game.keys.left = false;
+      }
+      if (event.key === "ArrowRight") {
+        game.keys.right = false;
+      }
+    });
+
+    startButton.addEventListener("click", startGame);
+    restartButton.addEventListener("click", resetGame);
+
+    resetGame();
+  </script>
+</body>
+</html>
