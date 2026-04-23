@@ -436,6 +436,25 @@
       line-height: 1.5;
     }
 
+    .play-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: fit-content;
+      padding: 12px 18px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #fffaf4;
+      text-decoration: none;
+      font-weight: 800;
+      transition: transform 140ms ease, background 140ms ease;
+    }
+
+    .play-link:hover {
+      transform: translateY(-1px);
+      background: var(--accent-dark);
+    }
+
     button {
       appearance: none;
       border: 0;
@@ -678,6 +697,20 @@
               <p class="sample-text">Push to GitHub</p>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="step">
+        <span class="step-tag">7</span>
+        <div>
+          <h2>Play the published game</h2>
+          <p>Use this link at the end of the page to open the latest game file.</p>
+        </div>
+
+        <div>
+          <a class="play-link" href="fruit-catch-game.html">Open Fruit Catcher</a>
         </div>
       </div>
     </section>
